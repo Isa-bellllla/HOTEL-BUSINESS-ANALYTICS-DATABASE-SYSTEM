@@ -1,23 +1,30 @@
 # The Haven Los Angeles
 
-The Haven is a hotel booking and operations demo for a fictional boutique hotel in downtown Los Angeles. Guests can explore the property and make reservations, while front-desk staff and managers sign in to their own dashboards.
+The Haven is a hotel booking and operations demo for a fictional boutique hotel in downtown Los Angeles. Guests can explore the property and make reservations, while front-desk staff and managers have their own dashboards.
 
-![The Haven terrace overlooking downtown Los Angeles](static/images/terrace.webp)
+## Run the website in Jupyter Notebook
 
-## Run locally
+1. Download or clone the entire repository to your computer. Use Python 3.10 or newer.
+2. Open [Launch website.ipynb](Launch%20website.ipynb) in your local Jupyter Notebook or JupyterLab.
+3. In the launch cell, set `project` to the folder containing `app.py` and `launch_hotel.py`. If the notebook is already running from that folder, use:
 
-Download or clone the repository and open a terminal in the project folder. Use Python 3.10 or newer.
+   ```python
+   project = Path.cwd()
+   ```
 
-```bash
-python3 -m pip install -r requirements.txt
-python3 app.py
-```
+4. Install the dependencies once by running this in a separate notebook cell from the project folder:
 
-Open [The Haven in your browser](http://127.0.0.1:5000). On first launch, the app creates a SQLite database with sample bookings, billing history, and the demo accounts below.
+   ```python
+   %pip install -r requirements.txt
+   ```
+
+5. Run the launch cell and click **Open The Haven** when it appears. Keep the notebook kernel running while you use the site.
+
+The app creates a SQLite demo database on first launch if one is missing.
 
 ## Demo accounts
 
-Select **Sign in** in the top navigation and choose the matching role.
+On the hotel homepage, select **Sign in** and choose the matching role.
 
 | Role | Username | Password | What to try |
 | --- | --- | --- | --- |
@@ -27,20 +34,21 @@ Select **Sign in** in the top navigation and choose the matching role.
 
 ## Website features
 
-- **Hotel website** — Explore four room types and nine facilities, including dining, a cedar bathhouse, a fitness studio, and meeting and event spaces. Search for available rooms by dates and guest count.
-- **Customer portal** — Create an account, book a room or reserve a facility, select a late check-out option, and review charges and payments. The demo uses simulated payments.
+- **Hotel website** — Browse four room types and nine facilities, including restaurants, a cedar bathhouse, a fitness studio, and meeting and event spaces. Check room availability by dates and guest count.
+- **Customer portal** — Create an account, book a room or reserve a facility, select a late check-out option, and review charges and simulated payments.
 - **Staff dashboard** — View the guest roster, room inventory, and occupancy. Update guest requests as pending, in progress, or completed.
-- **Manager dashboard** — Review weekly, monthly, and yearly revenue trends, revenue by charge category, top-spending guests, facility usage, and staff feedback. Managers can also access the staff dashboard.
+- **Manager dashboard** — Review weekly, monthly, and yearly revenue trends, charges by category, top-spending guests, facility usage, and staff feedback. Managers can also access the staff dashboard.
 
 ## Try the booking workflow
 
-1. On the homepage, choose your dates and guest count, then select **Check availability**.
-2. Select a room and sign in as **Customer**. Confirm the booking in **My stay** and check the room charge in your folio.
+1. On the homepage, select your dates and guest count, then click **Check availability**.
+2. Choose a room and sign in as **Customer**. Confirm the booking in **My stay** and check your folio for the room charge.
 3. Sign out and sign in as **Staff** to find the reservation in the guest roster.
 
 ## Tech stack
 
-- **Backend** — Python and Flask with session-based role checks
+- **Backend** — Python and Flask
 - **Frontend** — Jinja templates, CSS, and JavaScript
-- **Database** — SQLite for guest accounts, inventory, reservations, folios, and payments
+- **Database** — SQLite
+- **Reporting** — Chart.js, loaded from a CDNeservations, folios, and payments
 - **Reporting** — Chart.js for manager charts, loaded from a CDN
