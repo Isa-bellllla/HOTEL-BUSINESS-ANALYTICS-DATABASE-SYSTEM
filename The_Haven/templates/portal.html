@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block title %}{{ {'customer':'My Stay','staff':'Front Desk','manager':'Hotel Operations'}[view_mode] }} | The Haven{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='portal.css') }}">
+{% if view_mode == 'manager' %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="portal-shell">
+{% if view_mode == 'customer' %}
+<div class="portal-title">
+    <p class="eyebrow">Guest account</p>
+    <h1>My stay</h1>
+    <p>Book rooms and hotel spaces, then review and settle your folio.</p>
+</div>
+
+<div class="grid-2">
+    <section class="card" id="room-booking">
+        <h2 class="portal-section-title">Book a room</h2>
+        <form method="post" action="{{ url_for('customer_reserve_room') }}" id="suiteForm" data-extension="{{ extended_checkout_rate }}">
+            <div class="grid-2 booking-dates">
+                <div class="form-group">
+                    <label for="checkInDate">Check-in</label>
+                    <input type="date" class="form-control" name="check_in" id="checkInDate" min="{{ today }}" value="{{ stay.check_in }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkOutDate">Check-out</label>
+                    <input type="date" class="form-control" name="check_out" id="checkOutDate" value="{{ stay.check_out }}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="portalGuests">Guests</label>
+                <select id="portalGuests" class="form-control" name="guests">
+                    {% for count in range(1, max_guests + 1) %}
+                    <option value="{{ count }}" {% if count == stay.guests %}selected{% endif %}>{{ count }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="roomSelect">Available rooms</label>
+                <select class="form-control" name="room_id" id="roomSelect" required {% if not available_rooms %}disabled{% endif %}>
+                    {% for r in available_rooms %}
+                    <option value="{{ r.room_id }}" data-rate="{{ r.base_rate }}" {% if r.room_id == selected_room %}selected{% endif %}>{{ r.type_name }} · {{ r.wing_code }} #{{ r.room_number }} (${{ "{:,.0f}".format(r.base_rate) }}/night)</option>
+                    {% else %}
+                    <option>No rooms available for these dates</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="extSelect">Check-out time</label>
+                <select class="form-control" name="extension_hours" id="extSelect">
+                    <option value="0">11:00 AM · Standard</option>
+                    <option value="2">1:00 PM · Complimentary</option>
+                    <option value="4">3:00 PM · +${{ extended_checkout_rate }}</option>
+                </select>
+            </div>
+            <div class="estimate" aria-live="polite">
+                <span>Estimated stay · <strong id="computedDays">—</strong></span><strong id="computedCost">—</strong>
+            </div>
+            <div class="portal-actions">
+                <button type="submit" class="btn-solid" {% if not available_rooms %}disabled{% endif %}>Book room</button>
+                <button type="submit" class="btn-outline" formmethod="get" formaction="{{ url_for('customer_portal', _anchor='room-booking') }}">Refresh availability</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card" id="facility-booking">
+        <h2 class="portal-section-title">Reserve a facility</h2>
+        <form method="post" action="{{ url_for('customer_reserve_facility') }}" id="facForm" data-discount="{{ dining_discount }}">
+            <div class="form-group">
+                <label for="facSelect">Venue</label>
+                <select class="form-control" name="facility_id" id="facSelect" required>
+                    {% for f in facilities %}
+                    <option value="{{ f.facility_id }}" data-rate="{{ f.hourly_rate }}" {% if f.facility_id == selected_facility %}selected{% endif %}>{{ f.facility_name }} (${{ "{:,.0f}".format(f.hourly_rate) }}/hour)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid-2 booking-dates">
+                <div class="form-group">
+                    <label for="facDate">Date</label>
+                    <input type="date" class="form-control" name="res_date" id="facDate" value="{{ today }}" min="{{ today }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="facHours">Duration in hours</label>
+                    <input type="number" min="1" max="8" class="form-control" name="duration_hours" id="facHours" value="2" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="facSlot">Preferred time slot</label>
+                <select id="facSlot" class="form-control" name="slot_name">
+                    {% for slot, label in time_slots %}<option value="{{ slot }}">{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="facEating">Food or catering</label>
+                <select class="form-control" name="is_eating" id="facEating">
+                    <option value="0">Venue only</option>
+                    <option value="1">Add food or catering · {{ "{:.0%}".format(dining_discount) }} off venue rate</option>
+                </select>
+                <p class="field-note">Menu items and catering are priced separately.</p>
+            </div>
+            <div class="estimate" aria-live="polite"><span>Estimated venue charge</span><strong id="computedFacCost">—</strong></div>
+            <button type="submit" class="btn-solid">Reserve facility</button>
+        </form>
+    </section>
+</div>
+
+<div class="grid-2" id="folio">
+    <section class="card">
+        <h2 class="portal-section-title">Folio balance</h2>
+        {% set balance = cust_account.total_charges - cust_account.total_paid %}
+        <dl class="folio-totals">
+            <div><dt>Total charges</dt><dd>${{ "{:,.2f}".format(cust_account.total_charges) }}</dd></div>
+            <div><dt>Payments</dt><dd>${{ "{:,.2f}".format(cust_account.total_paid) }}</dd></div>
+            <div><dt>Balance due</dt><dd>${{ "{:,.2f}".format(balance) }}</dd></div>
+        </dl>
+        {% if balance > 0 %}
+        <button type="button" class="btn-solid" id="open-payment">Pay folio balance</button>
+        {% else %}
+        <p class="field-note">Your folio has no outstanding balance.</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2 class="portal-section-title">Itemized transactions</h2>
+        <div class="table-responsive folio-table" tabindex="0" aria-label="Folio transactions">
+            <table>
+                <thead><tr><th>Category</th><th>Details</th><th>Amount</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for item in cust_items %}
+                    <tr>
+                        <td>{{ item.item_category }}</td><td>{{ item.description }}</td>
+                        <td><strong>${{ "{:,.2f}".format(item.amount) }}</strong></td>
+                        <td>{{ item.trans_time[:16] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">No transactions yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{% if balance > 0 %}
+<dialog id="cardModal" aria-labelledby="payment-title">
+    <div class="dialog-heading">
+        <h2 id="payment-title" class="portal-section-title">Pay your folio</h2>
+        <form method="dialog"><button type="submit" class="btn-outline" aria-label="Close payment">×</button></form>
+    </div>
+    <p class="field-note payment-note">This is a simulated payment. Use test card details.</p>
+    <form method="post" action="{{ url_for('customer_pay') }}">
+        <div class="form-group">
+            <label for="billing-type">Account type</label>
+            <select id="billing-type" class="form-control" name="billing_type">
+                <option value="Personal">Personal card</option>
+                <option value="Corporate">Corporate card</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="payment-amount">Payment amount (USD)</label>
+            <input id="payment-amount" type="number" step="0.01" min="0.01" max="{{ '%.2f'|format(balance) }}" class="form-control" name="amount" value="{{ '%.2f'|format(balance) }}" required>
+        </div>
+        <div class="form-group">
+            <label for="cardholder">Cardholder name</label>
+            <input id="cardholder" class="form-control" name="cardholder_name" placeholder="Test Guest" required>
+        </div>
+        <div class="form-group">
+            <label for="test-card">Test card number</label>
+            <input id="test-card" class="form-control" name="card_number" placeholder="4242 4242 4242 4242" maxlength="19" inputmode="numeric" required>
+        </div>
+        <div class="grid-2 booking-dates">
+            <div class="form-group">
+                <label for="test-expiry">Expiry date</label>
+                <input id="test-expiry" class="form-control" name="expiry" placeholder="MM/YY" maxlength="5" required>
+            </div>
+            <div class="form-group">
+                <label for="test-cvv">CVC / CVV</label>
+                <input id="test-cvv" type="password" class="form-control" name="cvv" placeholder="123" maxlength="4" inputmode="numeric" required>
+            </div>
+        </div>
+        <button type="submit" class="btn-solid">Record demo payment</button>
+    </form>
+</dialog>
+{% endif %}
+<script src="{{ url_for('static', filename='customer.js') }}" defer></script>
+{% endif %}
+
+        {% if view_mode == 'staff' %}
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div>
+                    <h1 class="operations-title">Front Desk Operations</h1>
+                    <p style="color:var(--muted); font-size:13px;">Guest stays, room requests, and live inventory availability.</p>
+                </div>
+                <span class="badge badge-completed">Host Desk Active</span>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px;">
+                <div class="stat-card"><div class="stat-title">In-House Guests</div><div class="stat-value">{{ staff_stats.active_guests }}</div><div class="stat-sub">Confirmed stays today</div></div>
+                <div class="stat-card"><div class="stat-title">Clean & Vacant Rooms</div><div class="stat-value" style="color:#10b981;">{{ staff_stats.vacant_rooms }}</div><div class="stat-sub">Ready for check-in</div></div>
+                <div class="stat-card"><div class="stat-title">Pending Requests</div><div class="stat-value" style="color:#f59e0b;">{{ staff_stats.pending_requests }}</div><div class="stat-sub">In-room tasks</div></div>
+                <div class="stat-card"><div class="stat-title">Open Balances</div><div class="stat-value" style="color:#ef4444;">{{ staff_stats.unpaid_count }}</div><div class="stat-sub">Pending folios</div></div>
+            </div>
+
+            <h3 style="font-size:15px; font-weight:600; margin-bottom:10px;">Guest Roster & Contact Directory</h3>
+            <div class="table-responsive" style="max-height:340px; overflow-y:auto; margin-bottom:24px;">
+                <table>
+                    <thead><tr><th>Guest Name</th><th>Affiliation</th><th>Phone / Email</th><th>Room</th><th>Stay Dates</th><th>Status</th><th>Balance</th></tr></thead>
+                    <tbody>
+                        {% for row in guest_overview %}
+                        <tr>
+                            <td><strong>{{ row.full_name }}</strong></td>
+                            <td>{{ row.organization_name or 'Independent' }}</td>
+                            <td>{{ row.phone }}<br><small style="color:var(--muted);">{{ row.email }}</small></td>
+                            <td>Room {{ row.room_number }} ({{ row.wing_code }})</td>
+                            <td>{{ row.check_in_date }} ~ {{ row.check_out_date }} ({{ row.duration_days }}n)</td>
+                            <td>
+                                {% if row.status == 'Clean/Vacant' %}<span class="badge badge-clean">Ready</span>
+                                {% elif row.status == 'Occupied' %}<span class="badge badge-occupied">In-House</span>
+                                {% else %}<span class="badge badge-pending">Service</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if (row.total_charges - row.total_paid) > 0 %}<span style="color:#ef4444; font-weight:600;">${{ "%.2f"|format(row.total_charges - row.total_paid) }}</span>
+                                {% else %}<span style="color:#10b981;">Settled</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="font-size:15px; font-weight:600; margin-bottom:10px;">Guest Requests (Pending / In Progress / Completed)</h3>
+                    <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
+                        <table>
+                            <thead><tr><th>Room</th><th>Task</th><th>Status</th><th>Update</th></tr></thead>
+                            <tbody>
+                                {% for req in all_requests %}
+                                <tr>
+                                    <td><strong>#{{ req.room_number }}</strong></td>
+                                    <td>{{ req.request_type }}</td>
+                                    <td>
+                                        {% if req.status == 'Pending' %}<span class="badge badge-pending">Pending</span>
+                                        {% elif req.status == 'In Progress' %}<span class="badge badge-inprogress">In Progress</span>
+                                        {% else %}<span class="badge badge-completed">Done</span>{% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="/staff/update_request" style="display:flex; gap:4px;">
+                                            <input type="hidden" name="request_id" value="{{ req.request_id }}">
+                                            <select name="status" aria-label="Work order status" class="form-control" style="padding:2px 6px; font-size:11.5px; width:100px;">
+                                                <option value="Pending" {% if req.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                                <option value="In Progress" {% if req.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                                                <option value="Completed" {% if req.status == 'Completed' %}selected{% endif %}>Done</option>
+                                            </select>
+                                            <button type="submit" class="btn-solid" style="padding:2px 8px; font-size:11px;">Save</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size:15px; font-weight:600; margin-bottom:10px;">Inventory Availability</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Room Type</th><th>Total</th><th>Vacant</th><th>Occupied</th><th>Occupancy</th></tr></thead>
+                            <tbody>
+                                {% for av in room_availability %}
+                                <tr>
+                                    <td><strong>{{ av.type_name }}</strong></td>
+                                    <td>{{ av.total_rooms }}</td>
+                                    <td style="color:#10b981; font-weight:600;">{{ av.available_rooms }}</td>
+                                    <td style="color:#ef4444; font-weight:600;">{{ av.occupied_rooms }}</td>
+                                    <td><strong>{{ av.current_occupancy_rate }}%</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if view_mode == 'manager' %}
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                <div>
+                    <h1 class="operations-title">Operations &amp; Revenue Intelligence</h1>
+                    <p style="color:var(--muted); font-size:13px;">Timeframe revenue trajectories, breakdown by chargeable facilities & mini-bar, and VIP lifetime value.</p>
+                </div>
+                <span class="badge" style="background:#f4f4f5; color:var(--text);">Executive Overview</span>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:20px;">
+                <div class="card" style="box-shadow:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                        <h3 style="font-size:14px; font-weight:600;">Revenue Trajectory</h3>
+                        <div class="filter-btn-group" style="margin-bottom:0;">
+                            <a href="/manager?period=weekly&top_period={{ top_period }}" class="filter-btn {% if period == 'weekly' %}active{% endif %}">Weekly</a>
+                            <a href="/manager?period=monthly&top_period={{ top_period }}" class="filter-btn {% if period == 'monthly' %}active{% endif %}">Monthly</a>
+                            <a href="/manager?period=yearly&top_period={{ top_period }}" class="filter-btn {% if period == 'yearly' %}active{% endif %}">Yearly</a>
+                        </div>
+                    </div>
+                    <div style="height:260px;"><canvas id="revenueTrendChart"></canvas></div>
+                </div>
+                <div class="card" style="box-shadow:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                        <h3 style="font-size:14px; font-weight:600;">Revenue Breakdown (Rooms, Mini Bar & Spaces)</h3>
+                    </div>
+                    <div style="height:260px; display:flex; justify-content:center;"><canvas id="segmentPieChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:20px; box-shadow:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <div>
+                        <h3 style="font-size:15px; font-weight:600;">Top 5 Revenue-Producing Guests</h3>
+                        <p style="font-size:12px; color:var(--muted);">Filter between current month and annual performance.</p>
+                    </div>
+                    <div class="filter-btn-group" style="margin-bottom:0;">
+                        <a href="/manager?period={{ period }}&top_period=monthly" class="filter-btn {% if top_period == 'monthly' %}active{% endif %}">Monthly</a>
+                        <a href="/manager?period={{ period }}&top_period=yearly" class="filter-btn {% if top_period == 'yearly' %}active{% endif %}">Yearly</a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Rank</th><th>Client Name</th><th>Organization</th><th>Stays</th><th>Total Spend</th><th>Deposit Status</th></tr></thead>
+                        <tbody>
+                            {% for vip in top_customers %}
+                            <tr>
+                                <td><strong>#{{ loop.index }}</strong></td>
+                                <td><strong>{{ vip.customer_name }}</strong></td>
+                                <td>{{ vip.organization_name or 'Independent Guest' }}</td>
+                                <td>{{ vip.completed_room_stays }} Nights</td>
+                                <td style="color:#10b981; font-weight:600;">${{ "%.2f"|format(vip.total_spent) }}</td>
+                                <td><span class="badge badge-completed">Deposit Waived</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card" style="box-shadow:none;">
+                    <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Space Popularity & Foot Traffic</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Space</th><th>Type</th><th>Taps</th><th>Share</th></tr></thead>
+                            <tbody>
+                                {% for fac in facility_stats %}
+                                <tr>
+                                    <td><strong>{{ fac.facility_name }}</strong></td>
+                                    <td>{{ fac.facility_type }}</td>
+                                    <td>{{ fac.visit_count }}</td>
+                                    <td>{{ fac.usage_frequency_pct }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card" style="box-shadow:none;">
+                    <h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Host Feedback & Ratings</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Associate</th><th>Team</th><th>Reviews</th><th>Score</th></tr></thead>
+                            <tbody>
+                                {% for rev in staff_reviews %}
+                                <tr>
+                                    <td><strong>{{ rev.staff_name }}</strong></td>
+                                    <td>{{ rev.department }}</td>
+                                    <td>{{ rev.total_reviews }}</td>
+                                    <td style="color:#f59e0b; font-weight:600;">★ {{ rev.average_rating }} / 5.0</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer><p>&copy; 2026 The Haven Hotel & Residences. All Rights Reserved. Group J Project.</p></footer>
+
+    {% if view_mode == 'manager' %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        new Chart(document.getElementById('revenueTrendChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ trend_labels|tojson }},
+                datasets: [{
+                    label: 'Gross Revenue ($)',
+                    data: {{ trend_values|tojson }},
+                    borderColor: '#18181b',
+                    backgroundColor: 'rgba(24,24,27,0.06)',
+                    fill: true,
+                    tension: 0.25,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#18181b',
+                    pointRadius: 3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById('segmentPieChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ segment_labels|tojson }},
+                datasets: [{
+                    data: {{ segment_values|tojson }},
+                    backgroundColor: ['#18181b', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b', '#84cc16', '#d97706'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10.5 } } } } }
+        });
+    });
+    </script>
+    {% endif %}
+
+</div>
+{% endblock %}

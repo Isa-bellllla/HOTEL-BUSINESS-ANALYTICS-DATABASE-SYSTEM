@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create a customer account' if register else roles[role] ~ ' sign-in' }} | The Haven{% endblock %}
+{% block content %}
+<div class="content-width login-layout">
+    <img class="login-photo" src="{{ url_for('static', filename='images/corner-king.webp') }}" alt="A sunlit Haven guestroom with a view of downtown Los Angeles" width="758" height="502">
+    <section class="login-panel">
+        <h1>{{ 'Create your account' if register else 'Sign in' }}</h1>
+        {% if not register %}
+        <nav class="role-list" aria-label="Sign in as">
+            {% for key, label in roles.items() %}
+            <a href="{{ url_for('login_page', role=key, **continuation) }}" {% if key == role %}aria-current="page"{% endif %}>{{ label }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+        <p class="login-description">
+            {% if register %}Create a customer account to book a room or reserve a space.
+            {% elif role == 'customer' %}Access your reservations and guest folio.
+            {% elif role == 'staff' %}Sign in with your hotel staff account.
+            {% else %}Sign in with your hotel manager account.{% endif %}
+        </p>
+        <form class="login-form" method="post" action="{{ url_for('auth') }}">
+            <input type="hidden" name="role" value="{{ role }}">
+            <input type="hidden" name="action" value="{{ 'register' if register else 'login' }}">
+            {% for key, value in continuation.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+            {% if register %}
+            <label for="full-name">Full name</label>
+            <input id="full-name" name="full_name" autocomplete="name" maxlength="120" required>
+            {% endif %}
+            <label for="username">Username</label>
+            <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="120" required>
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="{{ 'new-password' if register else 'current-password' }}" {% if register %}minlength="8"{% endif %} maxlength="256" required>
+            <button class="button" type="submit">{{ 'Create account' if register else 'Sign in' }}</button>
+        </form>
+        {% if role == 'customer' %}
+        <a class="text-link account-link" href="{{ url_for('login_page', role='customer', register=none if register else 1, **continuation) }}">{{ 'Back to sign in' if register else 'Create a customer account' }} <span aria-hidden="true">↗</span></a>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

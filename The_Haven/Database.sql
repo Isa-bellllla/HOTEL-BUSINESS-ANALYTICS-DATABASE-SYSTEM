@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS user (user_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT, full_name TEXT, phone TEXT, email TEXT);
+CREATE TABLE IF NOT EXISTS building (building_id INTEGER PRIMARY KEY AUTOINCREMENT, building_name TEXT, floors_count INTEGER);
+CREATE TABLE IF NOT EXISTS wing (wing_id INTEGER PRIMARY KEY AUTOINCREMENT, building_id INTEGER, wing_code TEXT, proximity_pool TEXT, proximity_parking TEXT, has_handicap_access INTEGER);
+CREATE TABLE IF NOT EXISTS room_type (type_id INTEGER PRIMARY KEY AUTOINCREMENT, type_name TEXT, base_rate REAL, max_occupancy INTEGER, is_suite INTEGER, description TEXT, image_url TEXT);
+CREATE TABLE IF NOT EXISTS room (room_id INTEGER PRIMARY KEY AUTOINCREMENT, wing_id INTEGER, room_number TEXT, floor_num INTEGER, room_type_id INTEGER, is_nonsmoking INTEGER, has_toilet INTEGER, status TEXT);
+CREATE TABLE IF NOT EXISTS room_bed (bed_id INTEGER PRIMARY KEY AUTOINCREMENT, room_id INTEGER, bed_size TEXT, bed_count INTEGER);
+CREATE TABLE IF NOT EXISTS facility (facility_id INTEGER PRIMARY KEY AUTOINCREMENT, facility_name TEXT, facility_type TEXT, hourly_rate REAL, capacity INTEGER, description TEXT, image_url TEXT);
+CREATE TABLE IF NOT EXISTS facility_time_slot (slot_id INTEGER PRIMARY KEY AUTOINCREMENT, slot_name TEXT);
+CREATE TABLE IF NOT EXISTS customer (customer_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, organization_name TEXT, vip_level TEXT, advance_deposit_required INTEGER);
+CREATE TABLE IF NOT EXISTS staff (staff_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, department TEXT, position TEXT);
+CREATE TABLE IF NOT EXISTS billing_account (account_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, total_charges REAL DEFAULT 0, total_paid REAL DEFAULT 0, is_split_account INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS room_reservation (reservation_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, room_id INTEGER, billing_account_id INTEGER, check_in_date DATE, check_out_date DATE, duration_days INTEGER, extension_hours INTEGER, extension_surcharge REAL, reservation_status TEXT);
+CREATE TABLE IF NOT EXISTS facility_reservation (facility_res_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, facility_id INTEGER, res_date DATE, slot_name TEXT, duration_hours INTEGER DEFAULT 2, is_eating_usage INTEGER, base_charge REAL, discount_amount REAL, final_charge REAL);
+CREATE TABLE IF NOT EXISTS room_request (request_id INTEGER PRIMARY KEY AUTOINCREMENT, reservation_id INTEGER, request_type TEXT, details TEXT, status TEXT, created_time DATETIME, resolved_time DATETIME);
+CREATE TABLE IF NOT EXISTS billing_item (item_id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER, item_category TEXT, description TEXT, amount REAL, trans_time DATETIME);
+CREATE TABLE IF NOT EXISTS payment (payment_id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER, amount REAL, payment_method TEXT, card_last4 TEXT, cardholder_name TEXT, payment_time DATETIME, payment_status TEXT);
+CREATE TABLE IF NOT EXISTS service_feedback (feedback_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, staff_id INTEGER, rating INTEGER, comments TEXT, feedback_date DATE);
+CREATE TABLE IF NOT EXISTS facility_usage_log (log_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, facility_id INTEGER, action TEXT, scan_time DATETIME);

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}The Haven | Downtown Los Angeles{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='hotel.css') }}">
+    <script src="{{ url_for('static', filename='hotel.js') }}" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header">
+    <div class="site-header-inner {% if view_mode in ('staff', 'manager', 'customer') %}account-header{% endif %}">
+        <a class="wordmark" href="{{ url_for('index') }}" aria-label="The Haven, home">
+            <span>The Haven</span><small>Los Angeles</small>
+        </a>
+        {% if view_mode in ('staff', 'manager') %}
+        <nav class="site-nav" aria-label="Hotel operations">
+            <a href="{{ url_for('staff_portal') }}" {% if view_mode == 'staff' %}aria-current="page"{% endif %}>Front Desk</a>
+            {% if session.get('role') == 'manager' %}
+            <a href="{{ url_for('manager_portal') }}" {% if view_mode == 'manager' %}aria-current="page"{% endif %}>Analytics</a>
+            {% endif %}
+            <a href="{{ url_for('index') }}">Hotel website</a>
+        </nav>
+        <div class="header-actions"><a class="header-signin" href="{{ url_for('logout') }}">Sign out</a></div>
+        {% elif view_mode == 'customer' %}
+        <nav class="site-nav" aria-label="Guest account">
+            <a href="#room-booking">Rooms</a>
+            <a href="#facility-booking">Facilities</a>
+            <a href="#folio">Folio</a>
+        </nav>
+        <div class="header-actions"><a class="header-signin" href="{{ url_for('logout') }}">Sign out</a></div>
+        {% else %}
+        <nav class="site-nav" aria-label="The hotel">
+            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>Overview</a>
+            <a href="{{ url_for('suites_page') }}" {% if request.endpoint == 'suites_page' %}aria-current="page"{% endif %}>Rooms &amp; Suites</a>
+            <a href="{{ url_for('index', _anchor='dining') }}">Dining</a>
+            <a href="{{ url_for('index', _anchor='wellness') }}">Wellness</a>
+            <a href="{{ url_for('index', _anchor='meetings') }}">Meetings</a>
+        </nav>
+        <div class="header-actions">
+            {% if session.get('role') == 'customer' %}
+            <a class="header-signin" href="{{ url_for('customer_portal') }}">My stay</a>
+            {% else %}
+            <details class="sign-in-menu">
+                <summary class="header-signin">Sign in <span class="chevron" aria-hidden="true"></span></summary>
+                <div class="sign-in-options">
+                    <a href="{{ url_for('login_page', role='customer') }}">Customer</a>
+                    <a href="{{ url_for('login_page', role='staff') }}">Staff</a>
+                    <a href="{{ url_for('login_page', role='manager') }}">Manager</a>
+                    {% if session.get('user_id') %}<a href="{{ url_for('logout') }}">Sign out</a>{% endif %}
+                </div>
+            </details>
+            {% endif %}
+            <a class="button header-book" href="{{ url_for('index', _anchor='book') }}">Book a stay</a>
+        </div>
+        {% endif %}
+    </div>
+</header>
+<main id="main-content">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="notice content-width" role="status">
+            {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+    <div class="content-width footer-inner">
+        <div>
+            <a class="wordmark" href="{{ url_for('index') }}"><span>The Haven</span><small>Los Angeles</small></a>
+            <p>Downtown Los Angeles, California</p>
+        </div>
+        {% if view_mode not in ('staff', 'manager') %}
+        <nav aria-label="Footer">
+            <a href="{{ url_for('suites_page') }}">Rooms &amp; Suites</a>
+            <a href="{{ url_for('index', _anchor='dining') }}">Dining</a>
+            <a href="{{ url_for('index', _anchor='wellness') }}">Wellness</a>
+            <a href="{{ url_for('index', _anchor='meetings') }}">Meetings</a>
+        </nav>
+        {% endif %}
+    </div>
+</footer>
+</body>
+</html>

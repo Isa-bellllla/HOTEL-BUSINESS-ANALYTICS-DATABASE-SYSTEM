@@ -1,0 +1,53 @@
+{% macro booking_form(stay, today, max_guests) %}
+<form class="booking-form" action="{{ url_for('suites_page') }}" method="get" id="book">
+    <div class="booking-field">
+        <label for="arrive">Check-in</label>
+        <input id="arrive" name="check_in" type="date" value="{{ stay.check_in }}" min="{{ today }}" required>
+    </div>
+    <div class="booking-field">
+        <label for="depart">Check-out</label>
+        <input id="depart" name="check_out" type="date" value="{{ stay.check_out }}" min="{{ today }}" required>
+    </div>
+    <div class="booking-field booking-guests">
+        <label for="guest-count">Guests</label>
+        <select id="guest-count" name="guests">
+        {% for count in range(1, max_guests + 1) %}
+            <option value="{{ count }}" {% if count == stay.guests %}selected{% endif %}>{{ count }} {{ 'guest' if count == 1 else 'guests' }}</option>
+        {% endfor %}
+        </select>
+    </div>
+    <button class="button" type="submit">Check availability <span aria-hidden="true">↗</span></button>
+</form>
+{% endmacro %}
+
+{% macro room_card(room, stay=none) %}
+<article class="property-card">
+    <a class="property-image" href="{{ url_for('customer_portal', room_type=room.type_id, check_in=stay.check_in if stay else none, check_out=stay.check_out if stay else none, guests=stay.guests if stay else none, _anchor='room-booking') }}" tabindex="-1" aria-hidden="true">
+        <img src="{{ room.image_url }}" alt="" width="758" height="502" loading="lazy">
+    </a>
+    <div class="property-content">
+        <div class="property-kicker"><span>{{ 'Suite' if room.is_suite else 'Guestroom' }}</span><span>Up to {{ room.max_occupancy }} guests</span></div>
+        <h3>{{ room.type_name }}</h3>
+        <p>{{ room.description }}</p>
+        <div class="property-bottom">
+            <span class="property-rate"><strong>${{ "{:,.0f}".format(room.base_rate) }}</strong> / night</span>
+            <a class="text-link" href="{{ url_for('customer_portal', room_type=room.type_id, check_in=stay.check_in if stay else none, check_out=stay.check_out if stay else none, guests=stay.guests if stay else none, _anchor='room-booking') }}" aria-label="Book {{ room.type_name }}">Book room <span aria-hidden="true">↗</span></a>
+        </div>
+    </div>
+</article>
+{% endmacro %}
+
+{% macro facility_card(facility, label) %}
+<article class="property-card">
+    <img class="property-image" src="{{ facility.image_url }}" alt="" width="758" height="502" loading="lazy">
+    <div class="property-content">
+        <div class="property-kicker"><span>{{ label }}</span><span>Up to {{ facility.capacity }} guests</span></div>
+        <h3>{{ facility.facility_name }}</h3>
+        <p>{{ facility.description }}</p>
+        <div class="property-bottom">
+            <span class="property-rate"><strong>${{ "{:,.0f}".format(facility.hourly_rate) }}</strong> / hour</span>
+            <a class="text-link" href="{{ url_for('customer_portal', facility_id=facility.facility_id, _anchor='facility-booking') }}" aria-label="Reserve {{ facility.facility_name }}">Reserve <span aria-hidden="true">↗</span></a>
+        </div>
+    </div>
+</article>
+{% endmacro %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "catalog.html" import booking_form, room_card %}
+{% block title %}Rooms &amp; Suites | The Haven Los Angeles{% endblock %}
+{% block content %}
+<div class="content-width suites-page">
+    <div class="page-intro">
+        <a class="text-link back-link" href="{{ url_for('index') }}"><span aria-hidden="true">←</span> The hotel</a>
+        <h1>Rooms &amp; suites</h1>
+        <p>From a sunlit double queen to a suite with room for the whole family.</p>
+    </div>
+    {{ booking_form(stay, today, max_guests) }}
+    {% if searching %}
+    <div class="results-bar">
+        <p><strong>{{ room_types|length }}</strong> {{ 'room type' if room_types|length == 1 else 'room types' }} available for {{ stay.guests }} {{ 'guest' if stay.guests == 1 else 'guests' }}</p>
+        <a class="text-link" href="{{ url_for('suites_page') }}">Clear search</a>
+    </div>
+    {% endif %}
+    {% if room_types %}
+    <div class="property-grid property-grid-two suites-grid">
+        {% for room in room_types %}{{ room_card(room, stay if searching else none) }}{% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><h2>No rooms for these dates</h2><p>Try a different date range or guest count.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

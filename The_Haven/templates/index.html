@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "catalog.html" import booking_form, room_card, facility_card %}
+{% block content %}
+<section class="home-hero" aria-labelledby="home-title">
+    <img class="hero-photo" src="{{ url_for('static', filename='images/terrace.webp') }}" alt="" width="1536" height="1024" fetchpriority="high">
+    <div class="content-width hero-content">
+        <p class="eyebrow hero-location">Downtown Los Angeles · California</p>
+        <h1 id="home-title">A quieter side<br>of Los Angeles.</h1>
+        <p class="hero-intro">A downtown boutique hotel with sunlit rooms,<br class="desktop-break"> California dining and a cedar bathhouse.</p>
+        <a class="button button-light" href="#rooms">Explore the hotel <span aria-hidden="true">↓</span></a>
+    </div>
+</section>
+<div class="content-width home-booking">{{ booking_form(stay, today, max_guests) }}</div>
+
+<section class="content-width catalog-section rooms-section" id="rooms">
+    <div class="section-heading">
+        <div>
+            <h2>Rooms &amp; suites</h2>
+            <p>Natural textures, warm light and space to settle in.</p>
+        </div>
+        <a class="text-link section-link" href="{{ url_for('suites_page') }}">View all rooms <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="property-grid property-grid-rooms">
+        {% for room in room_types[:3] %}{{ room_card(room) }}{% endfor %}
+    </div>
+</section>
+<div id="facilities">
+{% for section_id, title, headline, venues in sections if venues %}
+<section class="facility-section facility-{{ section_id }}" id="{{ section_id }}">
+    <div class="content-width catalog-section">
+        <div class="section-heading">
+            <div><h2>{{ title }}</h2><p>{{ headline }}</p></div>
+        </div>
+        <div class="property-grid {% if venues|length == 4 %}property-grid-four{% elif venues|length == 2 %}property-grid-two{% endif %}">
+            {% for facility, label in venues %}{{ facility_card(facility, label) }}{% endfor %}
+        </div>
+    </div>
+</section>
+{% endfor %}
+</div>
+{% endblock %}
